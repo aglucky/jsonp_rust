@@ -23,6 +23,19 @@ fn test_parse_simple_object() {
 }
 
 #[test]
+fn test_parse_null_keyt() {
+    let input = r#"{"name": null, "age": 30}"#;
+    let result = parse_str(input);
+    
+    if let JVal::JObject(map) = result {
+        assert_eq!(map.get("name"), Some(&JVal::JNull));
+        assert_eq!(map.get("age"), Some(&JVal::JNum(30.0)));
+    } else {
+        panic!("Expected JObject");
+    }
+}
+
+#[test]
 fn test_parse_simple_array() {
     let input = r#"[1, 2, 3, "test"]"#;
     let result = parse_str(input);
@@ -108,7 +121,6 @@ fn test_complex_nested_structure() {
     }"#;
     
     let result = parse_str(input);
-    println!("{:#?}", result);
     
     if let JVal::JObject(map) = result {
         assert_eq!(map.get("name"), Some(&JVal::JString("John".to_string())));

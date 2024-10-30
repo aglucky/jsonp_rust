@@ -64,7 +64,7 @@ fn test_literal_tokens() {
         vec![
             Token::TBool(true),
             Token::TBool(false),
-            Token::Null,
+            Token::TNull,
         ]
     );
 }

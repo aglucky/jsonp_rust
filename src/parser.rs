@@ -13,6 +13,7 @@ pub enum JVal {
     JNum(f64),
     JObject(std::collections::HashMap<String, JVal>),
     JArray(Vec<JVal>),
+    JNull,
 }
 
 #[derive(Debug)]
@@ -130,6 +131,7 @@ fn parse_atom(token: Token) -> Result<JVal, anyhow::Error> {
         Token::TString(val) => Ok(JVal::JString(val)),
         Token::TNumber(val) => Ok(JVal::JNum(val)),
         Token::TBool(val) => Ok(JVal::JBool(val)),
+        Token::TNull => Ok(JVal::JNull),
         _ => Err(anyhow::anyhow!("Invalid JSON value: Expected string, number, or boolean, got {:?}", token))
     }
 }

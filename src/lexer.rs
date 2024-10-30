@@ -13,10 +13,10 @@ pub enum Token {
     TNumber(f64),
     TString(String),
     TBool(bool),
+    TNull,
     Comma,
     OpenArray,
     CloseArray,
-    Null,
 }
 
 pub struct TokenReader {
@@ -122,5 +122,5 @@ fn parse_null(iter: &mut JsonReader, first_char: char) -> Result<Token, anyhow::
         }
     }
 
-    Ok(Token::Null)
+    Ok(Token::TNull)
 }
