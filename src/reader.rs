@@ -1,4 +1,4 @@
-use std::{fs::File, io::{BufRead, BufReader}, path::PathBuf};
+use std::{fs::File, io::{ BufReader, Read}, path::PathBuf};
 use anyhow::Context;
 
 #[cfg(test)]
@@ -6,7 +6,6 @@ mod tests;
 
 pub struct JsonReader {
     reader: BufReader<File>,
-    cur_line: Option<Vec<char>>,
     is_eof: bool,
     peek_char: Option<char>,
 }
@@ -18,7 +17,6 @@ impl JsonReader {
 
         Ok(JsonReader {
             reader: BufReader::new(json_file),
-            cur_line: None,
             is_eof: false,
             peek_char: None,
         })
@@ -35,30 +33,13 @@ impl JsonReader {
         if self.is_eof {
             return None;
         }
-        
-        loop {
-            if let Some(line) = &mut self.cur_line {
-                if let Some(c) = line.pop() {
-                    return Some(c);
-                }
-                self.cur_line = None;
-                continue;
-            }
 
-            let mut next_str = String::new();
-            match self.reader.read_line(&mut next_str) {
-                Ok(0) => {
-                    self.is_eof = true;
-                    return None;
-                }
-                Ok(_) => {
-                    self.cur_line = Some(next_str.chars().rev().collect());
-                }
-                Err(e) => {
-                    eprintln!("Error reading file: {}", e);
-                    self.is_eof = true;
-                    return None;
-                }
+        let mut buf: [u8; 1] = [0; 1];
+        match self.reader.read_exact(&mut buf) {
+            Ok(_) => Some(buf[0] as char),
+            Err(_) => {
+                self.is_eof = true;
+                None
             }
         }
     }
