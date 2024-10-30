@@ -6,7 +6,9 @@ fn tokenize(input: &str) -> Vec<Token> {
     let temp_file = tempfile::NamedTempFile::new().unwrap();
     std::fs::write(&temp_file, input).unwrap();
     let reader = JsonReader::new(temp_file.path().to_path_buf()).unwrap();
-    TokenReader::new(reader).collect::<Result<Vec<Token>, _>>().unwrap()
+    TokenReader::new(reader)
+        .collect::<Result<Vec<Token>, _>>()
+        .unwrap()
 }
 
 #[test]
@@ -29,7 +31,7 @@ fn test_basic_tokens() {
 #[test]
 fn test_string_tokens() {
     let tokens = tokenize(r#""hello" "world\n" "escaped\"quote""#);
-    
+
     assert_eq!(
         tokens,
         vec![
@@ -43,7 +45,7 @@ fn test_string_tokens() {
 #[test]
 fn test_number_tokens() {
     let tokens = tokenize("123 -456.789 0.123 -0.0");
-    
+
     assert_eq!(
         tokens,
         vec![
@@ -58,34 +60,24 @@ fn test_number_tokens() {
 #[test]
 fn test_literal_tokens() {
     let tokens = tokenize("true false null");
-    
+
     assert_eq!(
         tokens,
-        vec![
-            Token::TBool(true),
-            Token::TBool(false),
-            Token::TNull,
-        ]
+        vec![Token::TBool(true), Token::TBool(false), Token::TNull,]
     );
 }
 
 #[test]
 fn test_whitespace_handling() {
     let tokens = tokenize(" \n\t{ \r\n} \t");
-    
-    assert_eq!(
-        tokens,
-        vec![
-            Token::OpenObject,
-            Token::CloseObject,
-        ]
-    );
+
+    assert_eq!(tokens, vec![Token::OpenObject, Token::CloseObject,]);
 }
 
 #[test]
 fn test_complex_structure() {
     let tokens = tokenize(r#"{"key": [1, true, "value"]}"#);
-    
+
     assert_eq!(
         tokens,
         vec![
@@ -101,5 +93,15 @@ fn test_complex_structure() {
             Token::CloseArray,
             Token::CloseObject,
         ]
+    );
+}
+
+#[test]
+fn test_escaped_characters() {
+    let tokens = tokenize(r#""Hello\nWorld\t\"\\r""#);
+
+    assert_eq!(
+        tokens,
+        vec![Token::TString("Hello\nWorld\t\"\\r".to_string()),]
     );
 }

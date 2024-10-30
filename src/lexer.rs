@@ -67,6 +67,7 @@ fn parse_string(iter: &mut JsonReader) -> Result<Token, anyhow::Error> {
                     '\\' => string.push('\\'),
                     'n' => string.push('\n'),
                     't' => string.push('\t'),
+                    'r' => string.push('\r'),
                     _ => return Err(anyhow::anyhow!("Invalid escape sequence '\\{}'", escaped_ch)),
                 }
             }
@@ -78,6 +79,7 @@ fn parse_string(iter: &mut JsonReader) -> Result<Token, anyhow::Error> {
 
 fn parse_number(iter: &mut JsonReader, num_start: char) -> Result<Token, anyhow::Error> {
     let mut number = num_start.to_string();
+    
     while let Some(next_ch) = iter.peek() {
         if next_ch.is_numeric() || next_ch == '.' {
             number.push(next_ch);

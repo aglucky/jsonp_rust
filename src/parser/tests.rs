@@ -149,3 +149,38 @@ fn test_complex_nested_structure() {
         panic!("Expected JObject");
     }
 }
+
+
+#[test]
+#[should_panic(expected = "Missing comma between elements")]
+fn test_missing_comma_in_array() {
+    parse_str(r#"[1 2 3]"#);
+}
+
+#[test]
+#[should_panic(expected = "Missing comma between elements")]
+fn test_missing_comma_in_object() {
+    parse_str(r#"{"a": 1 "b": 2}"#);
+}
+
+#[test]
+fn test_valid_commas_in_array() {
+    let result = parse_str(r#"[1, 2, 3]"#);
+    if let JVal::JArray(arr) = result {
+        assert_eq!(arr, vec![JVal::JNum(1.0), JVal::JNum(2.0), JVal::JNum(3.0)]);
+    } else {
+        panic!("Expected array");
+    }
+}
+
+#[test]
+fn test_valid_commas_in_object() {
+    let result = parse_str(r#"{"a": 1, "b": 2, "c": 3}"#);
+    if let JVal::JObject(map) = result {
+        assert_eq!(map.get("a"), Some(&JVal::JNum(1.0)));
+        assert_eq!(map.get("b"), Some(&JVal::JNum(2.0))); 
+        assert_eq!(map.get("c"), Some(&JVal::JNum(3.0)));
+    } else {
+        panic!("Expected object");
+    }
+}
