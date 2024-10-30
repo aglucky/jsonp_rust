@@ -206,7 +206,7 @@ fn parse_atom(token: Token) -> Result<JVal, anyhow::Error> {
         Token::TBool(val) => Ok(JVal::JBool(val)),
         Token::TNull => Ok(JVal::JNull),
         _ => Err(anyhow::anyhow!(
-            "Invalid JSON value: Expected string, number, or boolean, got {:?}",
+            "Invalid JSON value: Expected string, number, boolean, or null and got {:?}",
             token
         )),
     }

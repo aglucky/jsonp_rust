@@ -97,7 +97,7 @@ fn parse_number(iter: &mut JsonReader, num_start: char) -> Result<Token, anyhow:
         }
     }
 
-    if num_start == '0' && number.len() > 1 && !number.contains(".") {
+    if num_start == '0' && number.len() > 1 && !number.contains('.') {
         return Err(anyhow::anyhow!(
             "Only decimal numbers and 0 can start with 0"
         ));
@@ -120,7 +120,6 @@ fn parse_boolean(iter: &mut JsonReader, first_char: char) -> Result<Token, anyho
             return Err(anyhow::anyhow!("Invalid boolean literal"));
         }
     }
-
     Ok(Token::TBool(first_char == 't'))
 }
 
@@ -135,6 +134,5 @@ fn parse_null(iter: &mut JsonReader, first_char: char) -> Result<Token, anyhow::
             return Err(anyhow::anyhow!("Invalid null literal"));
         }
     }
-
     Ok(Token::TNull)
 }
