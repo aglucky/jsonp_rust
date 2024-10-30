@@ -23,7 +23,7 @@ fn test_parse_simple_object() {
 }
 
 #[test]
-fn test_parse_null_keyt() {
+fn test_parse_null_key() {
     let input = r#"{"name": null, "age": 30}"#;
     let result = parse_str(input);
     

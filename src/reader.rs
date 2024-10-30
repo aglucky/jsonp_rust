@@ -1,13 +1,17 @@
 use std::{fs::File, io::{ BufReader, Read}, path::PathBuf};
 use anyhow::Context;
+use std::collections::VecDeque;
 
 #[cfg(test)]
 mod tests;
 
+const NUM_CHARS_IN_BUFFER: usize = 1024;
+const BUFFER_SIZE: usize = std::mem::size_of::<char>() * NUM_CHARS_IN_BUFFER;
+
 pub struct JsonReader {
     reader: BufReader<File>,
     is_eof: bool,
-    peek_char: Option<char>,
+    buffer: VecDeque<char>,
 }
 
 impl JsonReader {
@@ -18,39 +22,51 @@ impl JsonReader {
         Ok(JsonReader {
             reader: BufReader::new(json_file),
             is_eof: false,
-            peek_char: None,
+            buffer: VecDeque::with_capacity(BUFFER_SIZE),
         })
     }
     
     pub fn peek(&mut self) -> Option<char> {
-        if self.peek_char.is_none() {
-            self.peek_char = self.next_internal();
+        if self.buffer.is_empty() {
+            self.refill_buffer().ok()?;
         }
-        self.peek_char
+        self.buffer.front().copied()
     }
 
-    fn next_internal(&mut self) -> Option<char> {
+    fn refill_buffer(&mut self) -> Result<(), anyhow::Error> {
         if self.is_eof {
-            return None;
+            return Ok(());
         }
 
-        let mut buf: [u8; 1] = [0; 1];
-        match self.reader.read_exact(&mut buf) {
-            Ok(_) => Some(buf[0] as char),
-            Err(_) => {
-                self.is_eof = true;
-                None
-            }
+        if !self.buffer.is_empty() {
+            return Err(anyhow::anyhow!("Attempted to refill on non-empty buffer"));
         }
+
+        let mut temp_buf = [0; BUFFER_SIZE];
+            match self.reader.read(&mut temp_buf) {
+                Ok(0) => {
+                    self.is_eof = true;
+                    return Ok(());
+                }
+                Ok(n) => {
+                    self.buffer.extend(temp_buf[..n].iter().map(|&b| b as char));
+                }
+                Err(e) => {
+                    self.is_eof = true;
+                    return Err(e).with_context(|| "Failed to read from file")?;
+                }
+            }
+
+        Ok(())
     }
 }
 
 impl Iterator for JsonReader {
     type Item = char;
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(c) = self.peek_char.take() {
-            return Some(c);
+        if self.buffer.is_empty() {
+            self.refill_buffer().ok();
         }
-        self.next_internal()
+        self.buffer.pop_front()
     }
 }
