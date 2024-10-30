@@ -32,28 +32,27 @@ impl TokenReader {
 impl Iterator for TokenReader {
     type Item = Result<Token, anyhow::Error>;
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(ch) = self.reader.next() {
-            let result = match ch {
-                ch if ch.is_whitespace() => return self.next(),
-                '{' => Ok(Token::OpenObject),
-                '}' => Ok(Token::CloseObject),
-                '[' => Ok(Token::OpenArray),
-                ']' => Ok(Token::CloseArray),
-                ':' => Ok(Token::Colon),
-                ',' => Ok(Token::Comma),
-                '"' => parse_string(&mut self.reader),
-                '0'..='9' | '.' | '-' => parse_number(&mut self.reader, ch),
-                't' | 'f' | 'T' | 'F' => parse_boolean(&mut self.reader, ch),
-                'n' | 'N' => parse_null(&mut self.reader, ch),
-                _ => Err(anyhow::anyhow!(
-                    "Invalid character '{}' found when parsing",
-                    ch
-                )),
-            };
-            Some(result)
-        } else {
-            None
+        while let Some(ch) = self.reader.next() {
+            if !ch.is_whitespace() {
+                return Some(match ch {
+                    '{' => Ok(Token::OpenObject),
+                    '}' => Ok(Token::CloseObject),
+                    '[' => Ok(Token::OpenArray),
+                    ']' => Ok(Token::CloseArray),
+                    ':' => Ok(Token::Colon),
+                    ',' => Ok(Token::Comma),
+                    '"' => parse_string(&mut self.reader),
+                    '0'..='9' | '.' | '-' => parse_number(&mut self.reader, ch),
+                    't' | 'f' | 'T' | 'F' => parse_boolean(&mut self.reader, ch),
+                    'n' | 'N' => parse_null(&mut self.reader, ch),
+                    _ => Err(anyhow::anyhow!(
+                        "Invalid character '{}' found when parsing",
+                        ch
+                    )),
+                });
+            }
         }
+        None
     }
 }
 
