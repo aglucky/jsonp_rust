@@ -1,7 +1,10 @@
 use crate::lexer::{Token, TokenReader};
 use std::collections::HashMap;
 
-const UNEXPECTED_EOF: &str = "Unexpected end of file";
+#[cfg(test)]
+mod tests;
+
+const UNEXPECTED_EOF: &str = "Unexpected end of file while parsing JSON";
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum JVal {
@@ -19,14 +22,16 @@ enum ParseState {
     Value(JVal)
 }
 
-pub fn parse(iter: &mut TokenReader) -> JVal {
+pub fn parse(iter: &mut TokenReader) -> Result<JVal, anyhow::Error> {
     let mut stack: Vec<ParseState> = Vec::new();
-    let mut cur_key:Option<String> = None;
+    let mut key_stack: Vec<String> = Vec::new();
 
-    match iter.next() {
-        Some(Token::OpenObject) => stack.push(ParseState::Object(HashMap::new())),
-        Some(Token::OpenArray) => stack.push(ParseState::Array(Vec::new())),
-        _ => panic!("Missing opening bracket (must be '{{' or '[')"),
+    match iter.next()
+        .ok_or_else(|| anyhow::anyhow!("Empty input"))??
+    {
+        Token::OpenObject => stack.push(ParseState::Object(HashMap::new())),
+        Token::OpenArray => stack.push(ParseState::Array(Vec::new())),
+        _ => return Err(anyhow::anyhow!("Invalid JSON: Document must start with either '{{' or '['"))
     }
 
     while !stack.is_empty() {
@@ -34,25 +39,30 @@ pub fn parse(iter: &mut TokenReader) -> JVal {
         match last_state {
             Some(ParseState::Object(mut pairs)) => {
                 while let Some(token) = iter.next() {
-                    match token {
+                    match token? {
                         Token::TString(key) => {
-                            if iter.next().expect(UNEXPECTED_EOF) != Token::Colon {
-                                panic!("Key-value pairs must have colon")
+                            let colon = iter.next()
+                                .ok_or_else(|| anyhow::anyhow!(UNEXPECTED_EOF))??;
+                            if colon != Token::Colon {
+                                return Err(anyhow::anyhow!("Invalid JSON object: Expected ':' after key '{}'", key));
                             }
-                            match iter.next().expect(UNEXPECTED_EOF) {
+                            
+                            let val = iter.next()
+                                .ok_or_else(|| anyhow::anyhow!(UNEXPECTED_EOF))??;
+                            match val {
                                 Token::OpenArray => {
-                                    cur_key = Some(key);
+                                    key_stack.push(key);
                                     stack.push(ParseState::Object(pairs));
                                     stack.push(ParseState::Array(Vec::new()));
                                     break;
                                 }
                                 Token::OpenObject => {
-                                    cur_key = Some(key);
+                                    key_stack.push(key);
                                     stack.push(ParseState::Object(pairs));
                                     stack.push(ParseState::Object(HashMap::new()));
                                     break;
                                 }
-                                val => { pairs.insert(key, parse_atom(val)); }
+                                val => { pairs.insert(key, parse_atom(val)?); }
                             }
                         }
                         Token::Comma => continue,
@@ -60,14 +70,14 @@ pub fn parse(iter: &mut TokenReader) -> JVal {
                             stack.push(ParseState::Value(JVal::JObject(pairs)));
                             break;
                         }
-                        _ => panic!("Invalid Object Structure"),
+                        _ => return Err(anyhow::anyhow!("Invalid JSON object structure: Expected string key, '}}', or ','"))
                     }
                 }
             }
 
             Some(ParseState::Array(mut array)) => {
                 while let Some(token) = iter.next() {
-                    match token {
+                    match token? {
                         Token::OpenArray => {
                             stack.push(ParseState::Array(array));
                             stack.push(ParseState::Array(Vec::new()));
@@ -83,43 +93,43 @@ pub fn parse(iter: &mut TokenReader) -> JVal {
                             stack.push(ParseState::Value(JVal::JArray(array)));
                             break;
                         }
-                        val => { array.push(parse_atom(val)); }
+                        val => { array.push(parse_atom(val)?); }
                     }
                 }
             }
 
             Some(ParseState::Value(val)) => {
-                match stack.pop(){
+                match stack.pop() {
                     Some(ParseState::Array(mut array)) => {
                         array.push(val);
                         stack.push(ParseState::Array(array));
                     }
                     Some(ParseState::Object(mut pairs)) => {
-                        match cur_key {
-                            Some(ref key) => {
-                                pairs.insert(key.clone(), val);
+                        match key_stack.pop() {
+                            Some(key) => {
+                                pairs.insert(key, val);
                                 stack.push(ParseState::Object(pairs));
                             }
-                            None => { panic!("Missing key for nested object/array") }
+                            None => return Err(anyhow::anyhow!("Invalid JSON structure: Missing key for nested object/array"))
                         }
                     }
-                    Some(ParseState::Value(_)) => {panic!("Value cannot follow a value")}
-                    None => {return val}
+                    Some(ParseState::Value(_)) => return Err(anyhow::anyhow!("Invalid JSON structure: Cannot have consecutive values without separators")),
+                    None => return Ok(val)
                 }
             }
 
-            None => panic!("Invalid parse state"),
+            None => return Err(anyhow::anyhow!("Internal parser error: Invalid parse state")),
         }
     }
 
-    panic!("Incorrect json structure")
+    Err(anyhow::anyhow!("Invalid JSON structure: Unclosed object or array"))
 }
 
-fn parse_atom(token: Token) -> JVal {
+fn parse_atom(token: Token) -> Result<JVal, anyhow::Error> {
     match token {
-        Token::TString(val) => JVal::JString(val),
-        Token::TNumber(val) => JVal::JNum(val),
-        Token::TBool(val) => JVal::JBool(val),
-        _ => panic!("Invalid value: {:?}", token),
+        Token::TString(val) => Ok(JVal::JString(val)),
+        Token::TNumber(val) => Ok(JVal::JNum(val)),
+        Token::TBool(val) => Ok(JVal::JBool(val)),
+        _ => Err(anyhow::anyhow!("Invalid JSON value: Expected string, number, or boolean, got {:?}", token))
     }
 }

@@ -1,6 +1,10 @@
-use std::{fs::File, io::{BufRead, BufReader}};
+use std::{fs::File, io::{BufRead, BufReader}, path::PathBuf};
+use anyhow::Context;
 
-pub(crate) struct JsonReader {
+#[cfg(test)]
+mod tests;
+
+pub struct JsonReader {
     reader: BufReader<File>,
     cur_line: Option<Vec<char>>,
     is_eof: bool,
@@ -8,13 +12,16 @@ pub(crate) struct JsonReader {
 }
 
 impl JsonReader {
-    pub fn new(reader: BufReader<File>) -> Self {
-        JsonReader {
-            reader,
+    pub fn new(path: PathBuf) -> Result<Self, anyhow::Error> {
+        let json_file = File::open(&path)
+            .with_context(|| format!("Could not read file `{}`", path.display()))?;
+
+        Ok(JsonReader {
+            reader: BufReader::new(json_file),
             cur_line: None,
             is_eof: false,
             peek_char: None,
-        }
+        })
     }
     
     pub fn peek(&mut self) -> Option<char> {

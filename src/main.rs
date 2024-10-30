@@ -1,13 +1,11 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Parser;
-use std::fs::File;
-
-use std::io::BufReader;
+use parser::JVal;
 use std::process::ExitCode;
 
-mod lexer;
-mod reader;
-mod parser;
+pub mod lexer;
+pub mod reader;
+pub mod parser;
 
 #[derive(Parser)]
 struct Args {
@@ -16,15 +14,16 @@ struct Args {
 
 fn main() -> Result<ExitCode, Box<dyn std::error::Error>> {
     let Args { path } = Args::parse();
-    let json_file = File::open(&path)
-        .with_context(|| format!("Could not read file `{}`", path.display()))?;
 
-    let file_reader = reader::JsonReader::new(BufReader::new(json_file));
+    let file_reader = reader::JsonReader::new(path)?;
     let mut token_reader = lexer::TokenReader::new(file_reader);
 
-    // for token in token_reader {
-    //     println!{"{:?}", token}
-    // }
-    println!("{:?}", parser::parse(&mut token_reader));
+    match parser::parse(&mut token_reader) {
+        Ok(JVal::JArray(array)) => println!("{:#?}", array),
+        Ok(JVal::JObject(obj)) => println!("{:#?}", obj),
+        Ok(_) => return Err(anyhow::anyhow!("JSON document must be an array or object").into()),
+        Err(e) => return Err(e.into())
+    };
+    
     Ok(ExitCode::SUCCESS)
 }
