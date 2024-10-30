@@ -15,27 +15,19 @@ pub enum Token {
 
 pub(crate) struct TokenReader {
     reader: JsonReader,
-    peek_token: Option<Token>,
 }
 
 impl TokenReader {
     pub fn new(reader: JsonReader) -> Self {
         TokenReader {
             reader,
-            peek_token: None,
         }
     }
+}
 
-    pub fn peek(&mut self) -> Option<Token> {
-        if let Some(token) = &self.peek_token {
-            return Some(token.clone());
-        }
-        let token = self.next_internal();
-        self.peek_token = token.clone();
-        token
-    }
-
-    fn next_internal(&mut self) -> Option<Token> {
+impl Iterator for TokenReader {
+    type Item = Token;
+    fn next(&mut self) -> Option<Self::Item> {
         if let Some(ch) = self.reader.next() {
             match ch {
                 ch if ch.is_whitespace() => return self.next(),
@@ -52,16 +44,6 @@ impl TokenReader {
             }
         }
         None
-    }
-}
-
-impl Iterator for TokenReader {
-    type Item = Token;
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(c) = self.peek_token.take() {
-            return Some(c);
-        }
-        self.next_internal()
     }
 }
 
