@@ -49,7 +49,7 @@ impl JsonReader {
                     return Ok(());
                 }
                 Ok(n) => {
-                    self.buffer.extend(temp_buf[..n].iter().map(|&b| b as char));
+                    self.buffer.extend(temp_buf[..n].iter().copied().map(char::from));
                 }
                 Err(e) => {
                     self.is_eof = true;

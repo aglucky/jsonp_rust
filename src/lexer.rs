@@ -45,7 +45,10 @@ impl Iterator for TokenReader {
                 '0'..='9' | '.' | '-' => parse_number(&mut self.reader, ch),
                 't' | 'f' | 'T' | 'F' => parse_boolean(&mut self.reader, ch),
                 'n' | 'N' => parse_null(&mut self.reader, ch),
-                _ => Err(anyhow::anyhow!("Invalid character '{}' found when parsing", ch)),
+                _ => Err(anyhow::anyhow!(
+                    "Invalid character '{}' found when parsing",
+                    ch
+                )),
             };
             Some(result)
         } else {
@@ -60,15 +63,21 @@ fn parse_string(iter: &mut JsonReader) -> Result<Token, anyhow::Error> {
         match next_ch {
             '"' => break,
             '\\' => {
-                let escaped_ch = iter.next()
-                    .ok_or_else(|| anyhow::anyhow!("Unexpected end of input after escape character"))?;
+                let escaped_ch = iter.next().ok_or_else(|| {
+                    anyhow::anyhow!("Unexpected end of input after escape character")
+                })?;
                 match escaped_ch {
                     '"' => string.push('"'),
                     '\\' => string.push('\\'),
                     'n' => string.push('\n'),
                     't' => string.push('\t'),
                     'r' => string.push('\r'),
-                    _ => return Err(anyhow::anyhow!("Invalid escape sequence '\\{}'", escaped_ch)),
+                    _ => {
+                        return Err(anyhow::anyhow!(
+                            "Invalid escape sequence '\\{}'",
+                            escaped_ch
+                        ))
+                    }
                 }
             }
             _ => string.push(next_ch),
@@ -79,7 +88,7 @@ fn parse_string(iter: &mut JsonReader) -> Result<Token, anyhow::Error> {
 
 fn parse_number(iter: &mut JsonReader, num_start: char) -> Result<Token, anyhow::Error> {
     let mut number = num_start.to_string();
-    
+
     while let Some(next_ch) = iter.peek() {
         if next_ch.is_numeric() || next_ch == '.' {
             number.push(next_ch);
@@ -90,7 +99,9 @@ fn parse_number(iter: &mut JsonReader, num_start: char) -> Result<Token, anyhow:
     }
 
     if num_start == '0' && number.len() > 1 && !number.contains(".") {
-        return Err(anyhow::anyhow!("Only decimal numbers and 0 can start with 0"));
+        return Err(anyhow::anyhow!(
+            "Only decimal numbers and 0 can start with 0"
+        ));
     }
 
     number
@@ -103,7 +114,8 @@ fn parse_boolean(iter: &mut JsonReader, first_char: char) -> Result<Token, anyho
     let expected = if first_char == 't' { "rue" } else { "alse" };
 
     for expected_char in expected.chars() {
-        let ch = iter.next()
+        let ch = iter
+            .next()
             .ok_or_else(|| anyhow::anyhow!("Unexpected end of input while parsing boolean"))?;
         if ch != expected_char {
             return Err(anyhow::anyhow!("Invalid boolean literal"));
@@ -117,7 +129,8 @@ fn parse_null(iter: &mut JsonReader, first_char: char) -> Result<Token, anyhow::
     let expected = if first_char == 'n' { "ull" } else { "ULL" };
 
     for expected_char in expected.chars() {
-        let ch = iter.next()
+        let ch = iter
+            .next()
             .ok_or_else(|| anyhow::anyhow!("Unexpected end of input while parsing null"))?;
         if ch != expected_char {
             return Err(anyhow::anyhow!("Invalid null literal"));
